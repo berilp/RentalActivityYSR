@@ -1,0 +1,88 @@
+//notes 
+  Script Name : rs_PSC_RentalActivity.txt
+  Client Name : Public Storage
+  Created On  : 2025-07-18
+  Created By  : Beril Pehlivan
+  Description : YSR - Rental Activity
+  Modified On : 
+
+//end notes 
+
+
+//select display 
+
+
+select unitTypeSums.PropertyId,
+	    unitTypeSums.PropertyName,
+	    unitTypeSums.UnitType,
+	    unitTypeSums.UnitTypeId,
+	    unitTypeSums.Rent,
+	    unitTypeSums.TotalUnits,
+	    unitTypeSums.BegOcc,
+	    unitTypeSums.MoveIns,
+	    unitTypeSums.MoveOuts,
+	    (unitTypeSums.EndOcc - unitTypeSums.BegOcc) NetOcc,
+	    unitTypeSums.EndOcc,
+	    unitTypeSums.ResFuture,
+	    unitTypeSums.NotReady,
+	    unitTypeSums.EndArea,
+	    unitTypeSums.TotalArea,
+	    case isnull(unitTypeSums.TotalUnits, 0) when 0 then 0 else round(cast(unitTypeSums.EndOcc as float) / cast(unitTypeSums.TotalUnits as float),4) * 100 end OccPerc
+from (  select  p.hMy PropertyId,
+				 p.sAddr1 PropertyName,
+				 ut.sDesc UnitType,
+				 ut.hMy UnitTypeId,
+				 sum(case when endus.hMy is not null and endus.sStatus NOT IN(N'Excluded', N'Admin', N'Model', N'Down') then isnull(uh.cRent, u.SRENT) else 0 end) Rent,
+				 sum(case when endus.hMy is not null and endus.sStatus NOT IN(N'Excluded', N'Admin', N'Model', N'Down') then 1 else 0 end) TotalUnits,
+				 sum(case when begus.sStatus IN(N'Notice Unrented', N'Notice Rented', N'Occupied No Notice') then 1 else 0 end) BegOcc,
+				 sum(isnull(MoveIns.totalCount, 0)) MoveIns,
+				 sum(isnull(MoveOuts.totalCount, 0)) MoveOuts,
+				 sum(case when endus.sStatus IN(N'Notice Unrented', N'Notice Rented', N'Occupied No Notice') then 1 else 0 end) EndOcc,
+				 sum(case when endus.sStatus IN(N'Vacant Rented Not Ready', N'Vacant Rented Ready', N'Notice Rented') then 1 else 0 end) ResFuture,
+				 sum(case when endus.sStatus IN(N'Vacant Rented Not Ready', N'Vacant Unrented Not Ready') then 1 else 0 end) NotReady,
+				 sum(case when endus.sStatus IN(N'Notice Unrented', N'Notice Rented', N'Occupied No Notice') then isnull(uh.dSqft, u.DSQFT) else 0 end) EndArea,
+				 sum(case when endus.hMy is not null and endus.sStatus NOT IN(N'Excluded' , N'Admin', N'Model', N'Down') then isnull(uh.dSqft, u.DSQFT) else 0 end) TotalArea
+		 from unit u
+		 inner join property p on p.hMy = u.hProperty
+		 inner join unittype ut on ut.hMy = u.hUnitType
+		 left outer join unit_history uh ON uh.hMy = (select max(uh2.hMy)
+												      from unit_history uh2
+												      where uh2.hUnit = u.hMy
+												      and convert(date, uh2.dtDate, 101) <= convert(date, convert(datetime, N'07/18/2025 11:59:59PM', 101), 101))
+		 left outer join unit_status begus ON begus.hMy = (select max(us.hMy)
+														   from unit_status us
+														   where us.hUnit = u.hMy
+														   and convert(date, us.dtStart, 101) <= convert(date, convert(datetime, N'07/18/2025 02:55:38PM', 101), 101)
+														   and (us.dtEnd is null or convert(date, us.dtEnd, 101) > convert(date, convert(datetime, N'07/18/2025 02:55:38PM', 101), 101)))
+		 left outer join unit_status endus ON endus.hMy = (select max(us2.hMy)
+														   from unit_status us2
+														   where us2.hUnit = u.hMy
+														   and convert(date, us2.dtStart, 101) <= convert(date, convert(datetime, N'07/18/2025 11:59:59PM', 101), 101)
+														   and (us2.dtEnd is null or convert(date, us2.dtEnd, 101) > convert(date, convert(datetime, N'07/18/2025 11:59:59PM', 101), 101)))
+		 cross apply(select count(us3.hMy) totalCount
+					 from unit_status us3
+					 where us3.hUnit = u.hMy
+					 and convert(date, us3.dtStart, 101) <= convert(date, convert(datetime, N'07/18/2025 11:59:59PM', 101), 101)
+					 and convert(date, us3.dtStart, 101) >= convert(date, convert(datetime, N'07/18/2025 02:55:38PM', 101), 101)
+					 and us3.sStatus = N'Occupied No Notice')MoveIns
+		 cross apply(select count(us4.hMy) totalCount
+					 from unit_status us4
+					 inner join unit_status prevus4 on prevus4.hMy = (select max(us5.hMy)
+																	  from unit_status us5
+																	  where us5.hUnit = us4.hUnit
+																	  and us5.hMy < us4.hMy)
+					 where us4.hUnit = u.hMy
+					 and convert(date, us4.dtStart, 101) <= convert(date, convert(datetime, N'07/18/2025 11:59:59PM', 101), 101)
+					 and convert(date, us4.dtStart, 101) >= convert(date, convert(datetime, N'07/18/2025 02:55:38PM', 101), 101)
+					 and us4.sStatus IN(N'Vacant Unrented Not Ready', N'Vacant Unrented Ready', N'Vacant Rented Not Ready', N'Vacant Rented Ready')
+					 and prevus4.sStatus IN(N'Occupied No Notice', N'Notice Unrented', N'Notice Rented'))MoveOuts
+		 where 1=1
+		 and u.hProperty IN(964)
+ and ISNULL(p.iTypeStorage, 0) in (1,-1) 
+		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy
+      )unitTypeSums
+order by unitTypeSums.PropertyName, unitTypeSums.UnitType
+
+
+
+//end select 
