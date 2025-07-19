@@ -7,7 +7,7 @@
 		Loads the Correspondence Custom Report Setup.
 		Report : ...SM Rental Activity Report (SM_RentAct) 
 	PACKAGE CREATED ON
-		Date & Time : 7/18/2025 8:53:44 PM
+		Date & Time : 7/18/2025 9:20:28 PM
 	VERSION
 		CorrespondencePIv07.13
 	REPORT NOTES
@@ -22,12 +22,9 @@ EXEC YSR_DeleteReportSetup 'SM_RentAct', 1
 
 /* Insert or Update YSR Report Setup */ 
 UPDATE CustomCorrespMerging 
-SET sCode='SM_RentAct',sName='...SM Rental Activity Report',sScriptFileName='',sSELECT='select 
-  distinct 
-  unitTypeSums.PropertyId,
-  unitTypeSums.PropertyName,
-  unitTypeSums.Property_Code,
-    DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
+SET sCode='SM_RentAct',sName='...SM Rental Activity Report',sScriptFileName='',sSELECT='select distinct  p.scode Property_Code, 
+   				 p.sAddr1 PropertyName,
+                     DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
   DATENAME(MONTH, CAST(''#FromDate#'' AS DATETIME)) + '' '' +
   CAST(DAY(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
   CAST(YEAR(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) 
@@ -37,22 +34,14 @@ SET sCode='SM_RentAct',sName='...SM Rental Activity Report',sScriptFileName='',s
   CAST(DAY(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
   CAST(YEAR(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) 
   AS ReportDateRange
-from (
-select  p.hMy PropertyId,
-				 p.scode Property_Code, 
-   				 p.sAddr1 PropertyName,
-				 ut.sDesc UnitType,
-				 ut.hMy UnitTypeId
+                 
 		 from unit u
 		 inner join property p on p.hMy = u.hProperty
 		 inner join unittype ut on ut.hMy = u.hUnitType
 		 where 1=1
-		-- and u.hProperty IN(964)
-      --and p.hmy in (964)
 	  #conditions#
  and ISNULL(p.iTypeStorage, 0) in (1,-1) 
-		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode
-) unitTypeSums',sKeyCols='Property_Code',bInactive=0,bNewScreenOutput =0,bTabbedOutput =0,bTitleUsingFreezePanes =0,iObjectType=0,
+group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode',sKeyCols='Property_Code',bInactive=0,bNewScreenOutput =1,bTabbedOutput =1,bTitleUsingFreezePanes =0,iObjectType=0,
      sHRecord='',
      hAttachment=(SELECT hmy FROM AttachmentType WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0),
      hEmailTemplate=(SELECT hmy FROM Email_Template WHERE UPPER(sName) =UPPER('') AND iType =0),
@@ -81,12 +70,9 @@ select  p.hMy PropertyId,
 WHERE UPPER(sCode)=UPPER('SM_RentAct')
 ;
 INSERT INTO CustomCorrespMerging(sCode,sName,sScriptFileName,sSELECT,sKeyCols,bInactive,bNewScreenOutput,bTabbedOutput,bTitleUsingFreezePanes,iObjectType,sHRecord,hAttachment,hEmailTemplate,hEmailToRole,sMergedFileEmailTo,sEmailType,sNotes,bIncludeAllContacts,bMergeReportsWithNoEmailId,bAttachReportChecked,bEmailReportChecked,bShowOnPortalChecked,sReportOutputPath,bSchedulerRpt,bLongRunRpt,iDgSignObjectType,sDgSignHRecord,bHideFromGenerateDropDown,sQRColumns,iReportType,iWizardStep,bWizardCompleted,bAlwaysPreview,sHelpTopic,sAttachDescCol)
-SELECT 'SM_RentAct','...SM Rental Activity Report','','select 
-  distinct 
-  unitTypeSums.PropertyId,
-  unitTypeSums.PropertyName,
-  unitTypeSums.Property_Code,
-    DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
+SELECT 'SM_RentAct','...SM Rental Activity Report','','select distinct  p.scode Property_Code, 
+   				 p.sAddr1 PropertyName,
+                     DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
   DATENAME(MONTH, CAST(''#FromDate#'' AS DATETIME)) + '' '' +
   CAST(DAY(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
   CAST(YEAR(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) 
@@ -96,22 +82,14 @@ SELECT 'SM_RentAct','...SM Rental Activity Report','','select
   CAST(DAY(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
   CAST(YEAR(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) 
   AS ReportDateRange
-from (
-select  p.hMy PropertyId,
-				 p.scode Property_Code, 
-   				 p.sAddr1 PropertyName,
-				 ut.sDesc UnitType,
-				 ut.hMy UnitTypeId
+                 
 		 from unit u
 		 inner join property p on p.hMy = u.hProperty
 		 inner join unittype ut on ut.hMy = u.hUnitType
 		 where 1=1
-		-- and u.hProperty IN(964)
-      --and p.hmy in (964)
 	  #conditions#
  and ISNULL(p.iTypeStorage, 0) in (1,-1) 
-		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode
-) unitTypeSums','Property_Code',0,0,0,0,0,''
+group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode','Property_Code',0,1,1,0,0,''
       ,(SELECT hmy FROM AttachmentType WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0)
       ,(SELECT hmy FROM Email_Template WHERE UPPER(sName) =UPPER('') AND iType =0)
       ,(SELECT hmy FROM Role WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0)
@@ -261,6 +239,50 @@ WHERE NOT EXISTS(
          WHERE UPPER(Scode)=UPPER('display')
          AND hCustomCorrespSetup = (SELECT hmy FROM CustomCorrespSetup WHERE UPPER(Scode)=UPPER('rpt')
          AND hCustomCorrespMerging=(SELECT Hmy FROM CustomCorrespMerging WHERE UPPER(Scode)=UPPER('SM_RentAct'))))
+;
+/* Insert or UPDATE Filter Mappings for rpt */ 
+UPDATE CustomCorrespFilterMapping 
+SET hCustomCorrespMerging =(SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode)=UPPER('SM_RentAct')),
+    hCustomCorrespSetup =(SELECT hmy FROM CustomCorrespSetup WHERE UPPER(Scode)=UPPER('rpt') AND hCustomCorrespMerging = (SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode) = UPPER('SM_RentAct'))),
+    hCustomCorrespFilters=(SELECT hmy FROM CustomCorrespFilters WHERE UPPER(sFieldName)=UPPER('phmy') AND hCustomCorrespMerging =(SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode) = UPPER('SM_RentAct'))),
+    sFilterName='p.hmy in (#phmy#)',
+    hCustomCorrespSections=0,
+    sConstantFilterValue ='',
+    sFilterpart =''
+WHERE hMy=(SELECT ISNULL(Max(crfm.hMy),0) 
+          FROM CustomCorrespMerging crm 
+          INNER JOIN CustomCorrespFilterMapping crfm On crfm.hCustomCorrespMerging=crm.hMy 
+          INNER JOIN CustomCorrespSetup crs On crs.hMy=crfm.hCustomCorrespSetup 
+          LEFT Outer JOIN CustomCorrespFilters crf On crf.hMY=crfm.hCustomCorrespFilters 
+          LEFT Outer JOIN CustomCorrespSections crfs on crfs.hmy = crfm.hCustomCorrespSections 
+          WHERE 1=1 
+          AND UPPER(crm.sCode)=UPPER('SM_RentAct')
+	         AND UPPER(crs.sCode)=UPPER('rpt')
+          AND ISNULL(crfm.hCustomCorrespSections,0)=0 
+          AND UPPER(crf.sFieldName)=UPPER('phmy')
+          AND ISNULL(crfm.hCustomCorrespFilters,0)<> 0 
+)
+;
+INSERT INTO CustomCorrespFilterMapping(hCustomCorrespSetup,hCustomCorrespMerging,hCustomCorrespFilters,sFilterName,hCustomCorrespSections,sConstantFilterValue,sFilterpart)
+SELECT 
+         (SELECT hmy FROM CustomCorrespSetup WHERE UPPER(Scode)=UPPER('rpt') AND hCustomCorrespMerging = (SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode) = UPPER('SM_RentAct'))),
+         (SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode)=UPPER('SM_RentAct')),
+         (SELECT hmy FROM CustomCorrespFilters WHERE UPPER(sFieldName)=UPPER('phmy') AND CustomCorrespFilters.hCustomCorrespMerging=(SELECT hmy	FROM CustomCorrespMerging WHERE UPPER(Scode) = UPPER('SM_RentAct'))),'p.hmy in (#phmy#)',
+         (SELECT hmy FROM CustomCorrespSections WHERE UPPER(sCode)=UPPER('') AND hCustomCorrespSetup =(SELECT hmy FROM CustomCorrespSetup WHERE UPPER(Scode)=UPPER('rpt') AND hCustomCorrespMerging = (SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode) = UPPER('SM_RentAct')))),
+         ''
+        , '' 
+WHERE NOT EXISTS( SELECT 1 
+         FROM CustomCorrespMerging crm 
+         INNER JOIN CustomCorrespFilterMapping crfm On crfm.hCustomCorrespMerging=crm.hMy 
+         INNER JOIN CustomCorrespSetup crs On crs.hMy=crfm.hCustomCorrespSetup 
+         LEFT Outer JOIN CustomCorrespFilters crf On crf.hMy = crfm.hCustomCorrespFilters 
+         LEFT Outer JOIN CustomCorrespSections crsc On crsc.hMy = crfm.hCustomCorrespSections 
+         WHERE UPPER(crm.sCode)=UPPER('SM_RentAct')
+	       AND UPPER(crs.sCode)=UPPER('rpt')
+	       AND ISNULL(crfm.hCustomCorrespSections,0)=0 
+          AND UPPER(crf.sFieldName)=UPPER('phmy')
+	       AND ISNULL(crfm.hCustomCorrespFilters,0)<> 0 
+)
 ;
  /* Delete existing sharepoint setup for SM_RentAct */
  DELETE FROM ParamOpt2 WHERE sType = 'SPPUBLISHING_SM_RentAct_SOURCE' 
