@@ -43,6 +43,7 @@ select  p.hMy PropertyId,
 
 //end select 
 
+
 //select display 
 select
   distinct unitTypeSums.PropertyId,
