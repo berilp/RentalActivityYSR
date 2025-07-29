@@ -55,6 +55,7 @@ select
   unitTypeSums.UnitType UnitType,
   unitTypeSums.UnitTypeId,
   unitTypeSums.Rent UnitRent,
+  unitTypeSums.UnitArea UnitArea,
   unitTypeSums.TotalUnits TotalUnits,
   unitTypeSums.BegOcc StartOcc,
   unitTypeSums.MoveIns MoveIns,
@@ -80,6 +81,7 @@ from
       p.sAddr1 PropertyName,
       ut.sDesc UnitType,
       ut.hMy UnitTypeId,
+      u.dSqFt UnitArea,
       sum(
         case when endus.hMy is not null
         and endus.sStatus NOT IN(N'Excluded', N'Admin', N'Model', N'Down') then isnull(uh.cRent, u.SRENT) else 0 end
@@ -255,6 +257,7 @@ from
       p.sAddr1,
       ut.sDesc,
       ut.hMy,
+      u.dSqFt,
       p.scode
   ) unitTypeSums
   left join (
