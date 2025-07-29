@@ -14,6 +14,8 @@ select
   unitTypeSums.PropertyId,
   unitTypeSums.PropertyName,
   unitTypeSums.Property_Code,
+  unitTypeSums.Legal_Entity,
+  'Property: ' + unitTypeSums.Property_Code + ' - ' + unitTypeSums.Legal_Entity as Property,
     DATENAME(WEEKDAY, CAST('#FromDate#' AS DATETIME)) + ', ' +
   DATENAME(MONTH, CAST('#FromDate#' AS DATETIME)) + ' ' +
   CAST(DAY(CAST('#FromDate#' AS DATETIME)) AS VARCHAR) + ', ' +
@@ -29,16 +31,18 @@ select  p.hMy PropertyId,
 				 p.scode Property_Code, 
    				 p.sAddr1 PropertyName,
 				 ut.sDesc UnitType,
-				 ut.hMy UnitTypeId
+				 ut.hMy UnitTypeId,
+         o.ulastname Legal_Entity
 		 from unit u
 		 inner join property p on p.hMy = u.hProperty
 		 inner join unittype ut on ut.hMy = u.hUnitType
+     inner join owner o on p.hlegalentity = o.hmyperson
 		 where 1=1
 		-- and u.hProperty IN(964)
       --and p.hmy in (964)
 	  #conditions#
  and ISNULL(p.iTypeStorage, 0) in (1,-1) 
-		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode
+		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode, o.ulastname
 ) unitTypeSums
 
 //end select 
@@ -59,6 +63,7 @@ select
   unitTypeSums.EndOcc EndOcc,
   unitTypeSums.ResFuture FutureRes,
   unitTypeSums.NotReady VacNotReady,
+  unitTypeSums.Unavailable Unavailable,
   unitTypeSums.EndArea OccArea,
   unitTypeSums.TotalArea TotalArea,
   case isnull(unitTypeSums.TotalUnits, 0) when 0 then 0 else round(
@@ -101,17 +106,19 @@ from
       ) EndOcc,
       sum(
         case when endus.sStatus IN(
-          N'Vacant Rented Not Ready',
-          N'Vacant Rented Ready',
           N'Notice Rented'
         ) then 1 else 0 end
       ) ResFuture,
       sum(
         case when endus.sStatus IN(
-          N'Vacant Rented Not Ready',
-          N'Vacant Unrented Not Ready'
+          N'Vacant Rented Not Ready'
         ) then 1 else 0 end
       ) NotReady,
+      sum(
+        case when endus.sStatus IN(
+          N'Vacant Unrented Not Ready'
+        ) then 1 else 0 end
+      ) Unavailable,
       sum(
         case when endus.sStatus IN(
           N'Notice Unrented',
