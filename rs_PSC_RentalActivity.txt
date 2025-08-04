@@ -67,10 +67,24 @@ select
   unitTypeSums.Unavailable Unavailable,
   unitTypeSums.EndArea OccArea,
   unitTypeSums.TotalArea TotalArea,
+  case isnull(unitTypeSums.TotalArea, 0) when 0 then 0 else round(
+    cast(unitTypeSums.EndArea as float) / cast(unitTypeSums.TotalArea as float),
+    4
+  )  * 100 end OccSqFt,
   case isnull(unitTypeSums.TotalUnits, 0) when 0 then 0 else round(
     cast(unitTypeSums.EndOcc as float) / cast(unitTypeSums.TotalUnits as float),
     4
   ) * 100 end OccPerc,
+CASE 
+    WHEN ISNULL(unitTypeSums.TotalArea, 0) = 0 THEN 0 
+    ELSE ROUND(
+        (
+            (CAST(unitTypeSums.EndOcc AS FLOAT) - CAST(unitTypeSums.BegOcc AS FLOAT)) 
+            * CAST(unitTypeSums.UnitArea AS FLOAT)
+        ) / CAST(unitTypeSums.TotalArea AS FLOAT),
+        4
+    ) * 100 
+END AS SqFtChange,
   discounts.UnitTypeDesc,
   discounts.Description as DiscountDescription
 from
