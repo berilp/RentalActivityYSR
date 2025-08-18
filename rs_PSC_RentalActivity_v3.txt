@@ -1,0 +1,187 @@
+//notes 
+  Script Name : rs_PSC_RentalActivity.txt
+  Client Name : Public Storage
+  Created On  : 2025-07-18
+  Created By  : Beril Pehlivan
+  Description : YSR - Rental Activity
+  Modified On : 08/18 - Modified discounts section for in line 
+
+//end notes 
+
+//select header
+select 
+  distinct 
+  unitTypeSums.PropertyId,
+  unitTypeSums.PropertyName,
+  unitTypeSums.Property_Code,
+  unitTypeSums.Legal_Entity,
+  'Property: ' + unitTypeSums.Property_Code + ' - ' + unitTypeSums.Legal_Entity as Property,
+    DATENAME(WEEKDAY, CAST('#FromDate#' AS DATETIME)) + ', ' +
+  DATENAME(MONTH, CAST('#FromDate#' AS DATETIME)) + ' ' +
+  CAST(DAY(CAST('#FromDate#' AS DATETIME)) AS VARCHAR) + ', ' +
+  CAST(YEAR(CAST('#FromDate#' AS DATETIME)) AS VARCHAR) 
+  + ' to ' +
+  DATENAME(WEEKDAY, CAST('#ToDate#' AS DATETIME)) + ', ' +
+  DATENAME(MONTH, CAST('#ToDate#' AS DATETIME)) + ' ' +
+  CAST(DAY(CAST('#ToDate#' AS DATETIME)) AS VARCHAR) + ', ' +
+  CAST(YEAR(CAST('#ToDate#' AS DATETIME)) AS VARCHAR) 
+  AS ReportDateRange
+from (
+select  p.hMy PropertyId,
+				 p.scode Property_Code, 
+   				 p.sAddr1 PropertyName,
+				 ut.sDesc UnitType,
+				 ut.hMy UnitTypeId,
+         o.ulastname Legal_Entity
+		 from unit u
+		 inner join property p on p.hMy = u.hProperty
+		 inner join unittype ut on ut.hMy = u.hUnitType
+     inner join owner o on p.hlegalentity = o.hmyperson
+		 where 1=1
+		-- and u.hProperty IN(964)
+      --and p.hmy in (964)
+	  #conditions#
+ and ISNULL(p.iTypeStorage, 0) in (1,-1) 
+		 group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode, o.ulastname
+) unitTypeSums
+
+//end select 
+
+//select display 
+
+select distinct
+  -- Aggregate leasing specials per property+unit type
+  STUFF((
+      SELECT ', ' + ISNULL(ls.sDesc, '')
+      FROM LeasingSpecials ls
+      WHERE ls.hUnitType = unitTypeSums.UnitTypeId
+        AND ls.hProperty = unitTypeSums.PropertyId
+      FOR XML PATH(''), TYPE
+  ).value('.', 'nvarchar(max)'), 1, 2, '') AS DiscountDescription
+  /* Case16867527 */,
+  unitTypeSums.PropertyId,
+  unitTypeSums.PropertyName,
+  unitTypeSums.Property_Code,
+  unitTypeSums.UnitType,
+  unitTypeSums.UnitTypeId,
+  unitTypeSums.Rent AS UnitRent,
+  unitTypeSums.UnitArea,
+  unitTypeSums.TotalUnits,
+  unitTypeSums.BegOcc AS StartOcc,
+  unitTypeSums.MoveIns,
+  unitTypeSums.MoveOuts,
+  (unitTypeSums.EndOcc - unitTypeSums.BegOcc) AS NetOcc,
+  unitTypeSums.EndOcc,
+  unitTypeSums.ResFuture AS FutureRes,
+  unitTypeSums.NotReady AS VacNotReady,
+  unitTypeSums.Unavailable,
+  unitTypeSums.EndArea AS OccArea,
+  unitTypeSums.TotalArea,
+  CASE WHEN ISNULL(unitTypeSums.TotalArea, 0) = 0 THEN 0
+       ELSE ROUND(CAST(unitTypeSums.EndArea AS float) / CAST(unitTypeSums.TotalArea AS float), 4) * 100
+  END AS OccSqFt,
+  CASE WHEN ISNULL(unitTypeSums.TotalUnits, 0) = 0 THEN 0
+       ELSE ROUND(CAST(unitTypeSums.EndOcc AS float) / CAST(unitTypeSums.TotalUnits AS float), 4) * 100
+  END AS OccPerc,
+  CASE WHEN ISNULL(unitTypeSums.TotalArea, 0) = 0 THEN 0
+       ELSE ROUND(((CAST(unitTypeSums.EndOcc AS float) - CAST(unitTypeSums.BegOcc AS float))
+                    * CAST(unitTypeSums.UnitArea AS float)) / CAST(unitTypeSums.TotalArea AS float), 4) * 100
+  END AS SqFtChange
+  -- , discounts.UnitTypeDesc  -- uncomment the join below if you need this
+from (
+  select
+    p.hMy AS PropertyId,
+    p.scode AS Property_Code,
+    p.sAddr1 AS PropertyName,
+    ut.sDesc AS UnitType,
+    ut.hMy AS UnitTypeId,
+    u.dSqFt AS UnitArea,
+    sum(CASE WHEN endus.hMy IS NOT NULL
+              AND endus.sStatus NOT IN (N'Excluded', N'Admin', N'Model', N'Down')
+             THEN ISNULL(uh.cRent, u.SRENT) ELSE 0 END) AS Rent,
+    sum(CASE WHEN endus.hMy IS NOT NULL
+              AND endus.sStatus NOT IN (N'Excluded', N'Admin', N'Model', N'Down')
+             THEN 1 ELSE 0 END) AS TotalUnits,
+    sum(CASE WHEN begus.sStatus IN (N'Notice Unrented', N'Notice Rented', N'Occupied No Notice')
+             THEN 1 ELSE 0 END) AS BegOcc,
+    sum(ISNULL(MoveIns.totalCount, 0)) AS MoveIns,
+    sum(ISNULL(MoveOuts.totalCount, 0)) AS MoveOuts,
+    sum(CASE WHEN endus.sStatus IN (N'Notice Unrented', N'Notice Rented', N'Occupied No Notice')
+             THEN 1 ELSE 0 END) AS EndOcc,
+    sum(CASE WHEN endus.sStatus IN (N'Notice Rented') THEN 1 ELSE 0 END) AS ResFuture,
+    sum(CASE WHEN endus.sStatus IN (N'Vacant Rented Not Ready') THEN 1 ELSE 0 END) AS NotReady,
+    sum(CASE WHEN endus.sStatus IN (N'Vacant Unrented Not Ready') THEN 1 ELSE 0 END) AS Unavailable,
+    sum(CASE WHEN endus.sStatus IN (N'Notice Unrented', N'Notice Rented', N'Occupied No Notice')
+             THEN ISNULL(uh.dSqft, u.DSQFT) ELSE 0 END) AS EndArea,
+    sum(CASE WHEN endus.hMy IS NOT NULL
+              AND endus.sStatus NOT IN (N'Excluded', N'Admin', N'Model', N'Down')
+             THEN ISNULL(uh.dSqft, u.DSQFT) ELSE 0 END) AS TotalArea
+  from unit u
+    inner join property p on p.hMy = u.hProperty
+    inner join unittype ut on ut.hMy = u.hUnitType
+    left join unit_history uh ON uh.hMy = (
+      select max(uh2.hMy) from unit_history uh2
+      where uh2.hUnit = u.hMy
+        and convert(date, uh2.dtDate, 101) <= convert(date, convert(datetime, N'#ToDate#', 101), 101)
+    )
+    left join unit_status begus ON begus.hMy = (
+      select max(us.hMy) from unit_status us
+      where us.hUnit = u.hMy
+        and convert(date, us.dtStart, 101) <= convert(date, convert(datetime, N'#FromDate#', 101), 101)
+        and (us.dtEnd is null
+             or convert(date, us.dtEnd, 101) > convert(date, convert(datetime, N'#FromDate#', 101), 101))
+    )
+    left join unit_status endus ON endus.hMy = (
+      select max(us2.hMy) from unit_status us2
+      where us2.hUnit = u.hMy
+        and convert(date, us2.dtStart, 101) <= convert(date, convert(datetime, N'#ToDate#', 101), 101)
+        and (us2.dtEnd is null
+             or convert(date, us2.dtEnd, 101) > convert(date, convert(datetime, N'#ToDate#', 101), 101))
+    )
+    cross apply (
+      select count(us3.hMy) as totalCount
+      from unit_status us3
+      where us3.hUnit = u.hMy
+        and convert(date, us3.dtStart, 101) <= convert(date, convert(datetime, N'#ToDate#', 101), 101)
+        and convert(date, us3.dtStart, 101) >= convert(date, convert(datetime, N'#FromDate#', 101), 101)
+        and us3.sStatus = N'Occupied No Notice'
+    ) MoveIns
+    cross apply (
+      select count(us4.hMy) as totalCount
+      from unit_status us4
+        inner join unit_status prevus4 on prevus4.hMy = (
+          select max(us5.hMy) from unit_status us5
+          where us5.hUnit = us4.hUnit and us5.hMy < us4.hMy
+        )
+      where us4.hUnit = u.hMy
+        and convert(date, us4.dtStart, 101) <= convert(date, convert(datetime, N'#ToDate#', 101), 101)
+        and convert(date, us4.dtStart, 101) >= convert(date, convert(datetime, N'#FromDate#', 101), 101) -- fixed
+        and us4.sStatus IN (N'Vacant Unrented Not Ready', N'Vacant Unrented Ready',
+                            N'Vacant Rented Not Ready', N'Vacant Rented Ready')
+        and prevus4.sStatus IN (N'Occupied No Notice', N'Notice Unrented', N'Notice Rented')
+    ) MoveOuts
+  where
+    1=1 
+    #conditions#
+    and ISNULL(p.iTypeStorage, 0) in (1, -1)
+  group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, u.dSqFt, p.scode
+) unitTypeSums
+/* If you want UnitTypeDesc from discounts, uncomment this:
+left join (
+  select distinct
+    ls.hproperty as PropertyId,
+    ut.hmy as UnitTypeId,
+    ut.sdesc as UnitTypeDesc,
+    ls.sDesc as Description
+  from LeasingSpecials ls
+    join UNITTYPE ut on ls.hUnitType = ut.HMY
+    join chargtyp ct on ls.hchargecode = ct.hmy
+) discounts
+  on discounts.PropertyId = unitTypeSums.PropertyId
+ and discounts.UnitTypeId = unitTypeSums.UnitTypeId
+*/
+order by unitTypeSums.PropertyName, unitTypeSums.UnitType, unitTypeSums.Property_Code;
+
+
+
+//end select 
