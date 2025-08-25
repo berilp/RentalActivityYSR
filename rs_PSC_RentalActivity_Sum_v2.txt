@@ -1,10 +1,10 @@
 //notes 
-  Script Name : rs_PSC_RentalActivity_Sum.txt
+  Script Name : rs_PSC_RentalActivity_Sum_v2.txt
   Client Name : Public Storage
   Created On  : 2025-07-18
   Created By  : Beril Pehlivan
   Description : YSR - Rental Activity
-  Modified On : 
+  Modified On : Adding columns as per property detailed version
 
 //end notes 
 
@@ -49,7 +49,16 @@ select  p.hMy PropertyId,
 
 //select display 
 select
-  distinct unitTypeSums.PropertyId,
+  distinct 
+  STUFF((
+      SELECT ', ' + ISNULL(ls.sDesc, '')
+      FROM LeasingSpecials ls
+      WHERE ls.hUnitType = unitTypeSums.UnitTypeId
+        AND ls.hProperty = unitTypeSums.PropertyId
+      FOR XML PATH(''), TYPE
+  ).value('.', 'nvarchar(max)'), 1, 2, '') AS DiscountDescription
+  /* Case16867527 */,
+  unitTypeSums.PropertyId,
   unitTypeSums.PropertyName,
   unitTypeSums.Property_Code,
   unitTypeSums.UnitType UnitType,
@@ -57,7 +66,7 @@ select
   unitTypeSums.Rent UnitRent,
   unitTypeSums.UnitArea UnitArea,
   unitTypeSums.TotalUnits TotalUnits,
-  unitTypeSums.BegOcc StartOcc,
+  unitTypeSums.BegOcc AS StartOcc,
   unitTypeSums.MoveIns MoveIns,
   unitTypeSums.MoveOuts MoveOuts,
   (unitTypeSums.EndOcc - unitTypeSums.BegOcc) NetOcc,
@@ -67,12 +76,19 @@ select
   unitTypeSums.Unavailable Unavailable,
   unitTypeSums.EndArea OccArea,
   unitTypeSums.TotalArea TotalArea,
+  CASE WHEN ISNULL(unitTypeSums.TotalArea, 0) = 0 THEN 0
+       ELSE ROUND(CAST(unitTypeSums.EndArea AS float) / CAST(unitTypeSums.TotalArea AS float), 4) * 100
+  END AS OccSqFt,
   case isnull(unitTypeSums.TotalUnits, 0) when 0 then 0 else round(
     cast(unitTypeSums.EndOcc as float) / cast(unitTypeSums.TotalUnits as float),
     4
   ) * 100 end OccPerc,
-  discounts.UnitTypeDesc,
-  discounts.Description as DiscountDescription
+    CASE WHEN ISNULL(unitTypeSums.TotalArea, 0) = 0 THEN 0
+       ELSE ROUND(((CAST(unitTypeSums.EndOcc AS float) - CAST(unitTypeSums.BegOcc AS float))
+                    * CAST(unitTypeSums.UnitArea AS float)) / CAST(unitTypeSums.TotalArea AS float), 4) * 100
+  END AS SqFtChange
+  /*discounts.UnitTypeDesc,
+  discounts.Description as DiscountDescription*/
 from
   (
     select
@@ -260,7 +276,7 @@ from
       u.dSqFt,
       p.scode
   ) unitTypeSums
-  left join (
+  /*left join (
   
     select
       distinct ls.hproperty as PropertyId,
@@ -277,6 +293,7 @@ from
       #conditions#
   ) discounts on discounts.PropertyId = unitTypeSums.PropertyId
   and discounts.UnitTypeId = unitTypeSums.UnitTypeId
+  */
 order by
   unitTypeSums.UnitType,
   unitTypeSums.PropertyName,

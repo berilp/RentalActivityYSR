@@ -1,5 +1,5 @@
 //notes 
-  Script Name : rs_PSC_RentalActivity.txt
+  Script Name : rs_PSC_RentalActivity_v3.txt
   Client Name : Public Storage
   Created On  : 2025-07-18
   Created By  : Beril Pehlivan
@@ -87,7 +87,7 @@ select distinct
        ELSE ROUND(((CAST(unitTypeSums.EndOcc AS float) - CAST(unitTypeSums.BegOcc AS float))
                     * CAST(unitTypeSums.UnitArea AS float)) / CAST(unitTypeSums.TotalArea AS float), 4) * 100
   END AS SqFtChange
-  -- , discounts.UnitTypeDesc  -- uncomment the join below if you need this
+  /* , discounts.UnitTypeDesc  -- uncomment the join below if you need this*/
 from (
   select
     p.hMy AS PropertyId,
