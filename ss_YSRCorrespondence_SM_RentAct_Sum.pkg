@@ -7,7 +7,7 @@
 		Loads the Correspondence Custom Report Setup.
 		Report : ...SM Rental Activity Summary (SM_RentAct_Sum) 
 	PACKAGE CREATED ON
-		Date & Time : 7/29/2025 4:15:57 PM
+		Date & Time : 8/25/2025 7:23:05 PM
 	VERSION
 		CorrespondencePIv07.13
 	REPORT NOTES
@@ -22,7 +22,25 @@ EXEC YSR_DeleteReportSetup 'SM_RentAct_Sum', 1
 
 /* Insert or Update YSR Report Setup */ 
 UPDATE CustomCorrespMerging 
-SET sCode='SM_RentAct_Sum',sName='...SM Rental Activity Summary',sScriptFileName='',sSELECT='',sKeyCols='',bInactive=0,bNewScreenOutput =1,bTabbedOutput =1,bTitleUsingFreezePanes =0,iObjectType=0,
+SET sCode='SM_RentAct_Sum',sName='...SM Rental Activity Summary',sScriptFileName='',sSELECT='select distinct  p.scode Property_Code, 
+    				 p.sAddr1 PropertyName,
+                      DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
+   DATENAME(MONTH, CAST(''#FromDate#'' AS DATETIME)) + '' '' +
+   CAST(DAY(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
+   CAST(YEAR(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) 
+   + '' to '' +
+   DATENAME(WEEKDAY, CAST(''#ToDate#'' AS DATETIME)) + '', '' +
+   DATENAME(MONTH, CAST(''#ToDate#'' AS DATETIME)) + '' '' +
+   CAST(DAY(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
+   CAST(YEAR(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) 
+   AS ReportDateRange
+ 		 from unit u
+ 		 inner join property p on p.hMy = u.hProperty
+ 		 inner join unittype ut on ut.hMy = u.hUnitType
+ 		 where 1=1
+ 	  #conditions#
+  and ISNULL(p.iTypeStorage, 0) in (1,-1) 
+ group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode',sKeyCols='Property_Code',bInactive=0,bNewScreenOutput =1,bTabbedOutput =1,bTitleUsingFreezePanes =0,iObjectType=0,
      sHRecord='',
      hAttachment=(SELECT hmy FROM AttachmentType WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0),
      hEmailTemplate=(SELECT hmy FROM Email_Template WHERE UPPER(sName) =UPPER('') AND iType =0),
@@ -51,7 +69,25 @@ SET sCode='SM_RentAct_Sum',sName='...SM Rental Activity Summary',sScriptFileName
 WHERE UPPER(sCode)=UPPER('SM_RentAct_Sum')
 ;
 INSERT INTO CustomCorrespMerging(sCode,sName,sScriptFileName,sSELECT,sKeyCols,bInactive,bNewScreenOutput,bTabbedOutput,bTitleUsingFreezePanes,iObjectType,sHRecord,hAttachment,hEmailTemplate,hEmailToRole,sMergedFileEmailTo,sEmailType,sNotes,bIncludeAllContacts,bMergeReportsWithNoEmailId,bAttachReportChecked,bEmailReportChecked,bShowOnPortalChecked,sReportOutputPath,bSchedulerRpt,bLongRunRpt,iDgSignObjectType,sDgSignHRecord,bHideFromGenerateDropDown,sQRColumns,iReportType,iWizardStep,bWizardCompleted,bAlwaysPreview,sHelpTopic,sAttachDescCol)
-SELECT 'SM_RentAct_Sum','...SM Rental Activity Summary','','','',0,1,1,0,0,''
+SELECT 'SM_RentAct_Sum','...SM Rental Activity Summary','','select distinct  p.scode Property_Code, 
+    				 p.sAddr1 PropertyName,
+                      DATENAME(WEEKDAY, CAST(''#FromDate#'' AS DATETIME)) + '', '' +
+   DATENAME(MONTH, CAST(''#FromDate#'' AS DATETIME)) + '' '' +
+   CAST(DAY(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
+   CAST(YEAR(CAST(''#FromDate#'' AS DATETIME)) AS VARCHAR) 
+   + '' to '' +
+   DATENAME(WEEKDAY, CAST(''#ToDate#'' AS DATETIME)) + '', '' +
+   DATENAME(MONTH, CAST(''#ToDate#'' AS DATETIME)) + '' '' +
+   CAST(DAY(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) + '', '' +
+   CAST(YEAR(CAST(''#ToDate#'' AS DATETIME)) AS VARCHAR) 
+   AS ReportDateRange
+ 		 from unit u
+ 		 inner join property p on p.hMy = u.hProperty
+ 		 inner join unittype ut on ut.hMy = u.hUnitType
+ 		 where 1=1
+ 	  #conditions#
+  and ISNULL(p.iTypeStorage, 0) in (1,-1) 
+ group by p.hMy, p.sAddr1, ut.sDesc, ut.hMy, p.scode','Property_Code',0,1,1,0,0,''
       ,(SELECT hmy FROM AttachmentType WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0)
       ,(SELECT hmy FROM Email_Template WHERE UPPER(sName) =UPPER('') AND iType =0)
       ,(SELECT hmy FROM Role WHERE UPPER(sDesc) =UPPER('') AND iObjectType =0)
@@ -139,8 +175,8 @@ WHERE NOT EXISTS(
 /* Insert or UPDATE Report Setup for rpt */ 
 UPDATE CustomCorrespSetup 
 SET sCode='rpt',sName='',hCustomCorrespMerging =(SELECT hmy FROM CustomCorrespMerging WHERE UPPER(Scode) =UPPER('SM_RentAct_Sum')),
-    hCustomCorrespStANDardList=(SELECT hmy FROM CustomCorrespStANDardList WHERE UPPER(sName) =UPPER('')),sMainTemplate='rx_PSC_RentalActivity_Sum.xlsx',
-    sContTemplate='',sLastTemplate='',sScriptFileName='rs_PSC_RentalActivity_Sum.txt',bUseScriptFile=0,sKeyCols='',iMergeOrder=10,bInactive=0,bSharepointFile='0',sAttachSelect=''
+    hCustomCorrespStANDardList=(SELECT hmy FROM CustomCorrespStANDardList WHERE UPPER(sName) =UPPER('')),sMainTemplate='rx_PSC_RentalActivity_Sum_v2.xlsx',
+    sContTemplate='',sLastTemplate='',sScriptFileName='rs_PSC_RentalActivity_Sum_v2.txt',bUseScriptFile=0,sKeyCols='',iMergeOrder=10,bInactive=0,bSharepointFile='0',sAttachSelect=''
 WHERE hMy=(SELECT ISNULL(Max(crst1.hMy),0) 
           FROM CustomCorrespMerging crm1 
           INNER JOIN CustomCorrespSetup crst1 ON crst1.hCustomCorrespMerging=crm1.HMY  
@@ -150,7 +186,7 @@ WHERE hMy=(SELECT ISNULL(Max(crst1.hMy),0)
 ;
 INSERT INTO CustomCorrespSetup(sCode,sName,hCustomCorrespMerging,hCustomCorrespStANDardList,sMainTemplate,sContTemplate,sLastTemplate,sScriptFileName,bUseScriptFile,sKeyCols,iMergeOrder,bInactive,bSharepointFile,sAttachSelect)
 SELECT 'rpt','',(SELECT Hmy FROM CustomCorrespMerging WHERE UPPER(Scode)= UPPER('SM_RentAct_Sum')),
-     (SELECT hmy FROM CustomCorrespStANDardList WHERE UPPER(sName) =UPPER('')),'rx_PSC_RentalActivity_Sum.xlsx',NULL,NULL,'rs_PSC_RentalActivity_Sum.txt',0,'',10,0,0,''
+     (SELECT hmy FROM CustomCorrespStANDardList WHERE UPPER(sName) =UPPER('')),'rx_PSC_RentalActivity_Sum_v2.xlsx',NULL,NULL,'rs_PSC_RentalActivity_Sum_v2.txt',0,'',10,0,0,''
 WHERE NOT EXISTS(SELECT 1 
                  FROM CustomCorrespSetup 
                  WHERE UPPER(sCode)=UPPER('rpt')
